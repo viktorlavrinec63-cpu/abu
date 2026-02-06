@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "Bazos AutoFill Pro",
+  "description": "Автозаполнение форм, уникализация, ротация email и фраз, антифингерпринт. Русский UI.",
+  "version": "3.9.0",
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "cookies",
+    "scripting",
+    "storage",
+    "tabs",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*.bazos.cz/*",
+    "https://*.bazos.sk/*",
+    "https://*/*",
+    "https://api.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Bazos AutoFill Pro",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.bazos.cz/*",
+        "https://*.bazos.sk/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "phrases/*.txt",
+        "icon.png"
+      ],
+      "matches": [
+        "https://*.bazos.cz/*",
+        "https://*.bazos.sk/*"
+      ]
+    }
+  ]
+}

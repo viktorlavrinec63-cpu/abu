@@ -1,0 +1,92 @@
+body{font-family:Arial,sans-serif;margin:0;background:#f2f2f2;}
+header{display:flex;align-items:center;gap:8px;background:#003e83;color:#fff;padding:10px;}
+header .logo{width:24px;height:24px;}
+.tabs{background:#eaeaea;padding:6px;display:flex;gap:6px;}
+.tabs button{background:#d0d0d0;border:0;border-radius:4px;padding:6px 12px;cursor:pointer;font-weight:bold;}
+.tabs button.active{background:#003e83;color:#fff;}
+section.tab{display:none;padding:16px;}
+section.tab.active{display:block;}
+.country-block{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.1);margin-bottom:20px;}
+input{padding:6px;border:1px solid #ccc;border-radius:4px;width:250px;}
+button{margin-left:6px;padding:6px 10px;border:0;border-radius:4px;cursor:pointer;}
+.alias-table{width:100%;border-collapse:collapse;margin-top:8px;}
+.alias-table th,.alias-table td{border:1px solid #bbb;padding:4px;text-align:left;}
+.active-row{background:#d8ffd6;}
+.black-row{background:#fddede;}
+#countrySelector button {
+  margin-right: 10px;
+  padding: 6px 14px;
+  cursor: pointer;
+  border: 1px solid #2d89ef;
+  background: white;
+  color: #2d89ef;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: background 0.3s, color 0.3s;
+}
+#countrySelector button.active {
+  background-color: #2d89ef;
+  color: white;
+}
+#categorySelect {
+  font-size: 14px;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  width: 220px;
+  font-weight: 500;
+}
+#phrasesList {
+  font-size: 13px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#phrasesList li:hover {
+  background-color: #eef6ff;
+  cursor: default;
+}
+#countrySelector button {
+  margin-right: 10px;
+  padding: 6px 14px;
+  cursor: pointer;
+  border: 1px solid #2d89ef;
+  background: white;
+  color: #2d89ef;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: background 0.3s, color 0.3s;
+}
+#countrySelector button.active {
+  background-color: #2d89ef;
+  color: white;
+}
+#categorySelect {
+  font-size: 14px;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  width: 220px;
+  font-weight: 500;
+}
+#phrasesList {
+  font-size: 13px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#phrasesList li:hover {
+  background-color: #eef6ff;
+  cursor: default;
+}
+
+.btn-small{font-size:12px;padding:4px 8px;border:1px solid #c5d0e0;border-radius:6px;background:#f7f9fc;cursor:pointer;margin-right:6px}
+.btn-small:disabled{opacity:.6}

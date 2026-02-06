@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Bazos AutoFill Pro</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body style="min-width:230px;">
+  <header>
+    <img src="icon.png" width="24" style="vertical-align:middle">
+    <span style="font-weight:bold;">Bazos AutoFill</span>
+  </header>
+  <div style="padding:8px;">
+    <div><b>CZ:</b> <span id="popupCz"></span> <button id="popupSwitchCz">🔄</button></div>
+    <div><b>SK:</b> <span id="popupSk"></span> <button id="popupSwitchSk">🔄</button></div>
+    <div style="margin-top:8px;">
+      <button id="popupSwitchAll" style="width:100%;">🔁 Сменить все email</button>
+    </div>
+    <div style="margin-top:10px;font-size:13px;">
+      <div>За 24ч: <b id="popupStatTotal">0</b></div>
+      <div>CZ: <span id="popupStatCz">0</span></div>
+      <div>SK: <span id="popupStatSk">0</span></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button id="openSettings" style="width:100%;background:#f3f3f3;color:#0a7bff;font-weight:bold;">⚙️ Настройки</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
