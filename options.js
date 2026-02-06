@@ -404,9 +404,9 @@ function __computeEmailCounts(cfg, country){
 function __updateEmailCountersUI(cfg){
   ['cz','sk'].forEach(country=>{
     const { total, remaining } = __computeEmailCounts(cfg, country);
-    const emailCount = document.getElementById(`emailCount${country.toUpperCase()}`);
+    const emailCount = document.getElementById(country === 'cz' ? 'emailCountCz' : 'emailCountSk');
     if(emailCount) emailCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
-    const cookieCount = document.getElementById(`cookieCount${country.toUpperCase()}`);
+    const cookieCount = document.getElementById(country === 'cz' ? 'cookieCountCz' : 'cookieCountSk');
     if(cookieCount) cookieCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
 
     const emailBtn = document.getElementById(country === 'cz' ? 'toggleEmailListCz' : 'toggleEmailListSk');
