@@ -390,47 +390,57 @@ function updateDomainModeUi(country){
   });
 }
 
-function updateCounts(cfg){
+function __computeEmailCounts(cfg, country){
   cfg = ensureBuilderCfg(cfg || {});
+  const list = cfg.emails?.[country] || [];
+  const total = list.length;
+  const listSet = new Set(list);
+  const blacklist = cfg.blacklist?.[country] || [];
+  const blocked = blacklist.filter(email => listSet.has(email)).length;
+  const remaining = total - blocked;
+  return { total, remaining };
+}
+
+function __updateEmailCountersUI(cfg){
   ['cz','sk'].forEach(country=>{
-    const total = (cfg.emails?.[country] || []).length;
-    const remaining = total - ((cfg.blacklist?.[country] || []).length);
+    const { total, remaining } = __computeEmailCounts(cfg, country);
     const emailCount = document.getElementById(`emailCount${country.toUpperCase()}`);
     if(emailCount) emailCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
     const cookieCount = document.getElementById(`cookieCount${country.toUpperCase()}`);
     if(cookieCount) cookieCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
+
+    const emailBtn = document.getElementById(country === 'cz' ? 'toggleEmailListCz' : 'toggleEmailListSk');
+    if(emailBtn){
+      if(total <= 100){
+        emailBtn.style.display = 'none';
+      }else{
+        emailBtn.style.display = '';
+        emailBtn.textContent = showAllEmail[country]
+          ? 'Свернуть (100)'
+          : `Показать все (${total})`;
+      }
+    }
+
+    const cookieBtn = document.getElementById(country === 'cz' ? 'toggleCookieListCz' : 'toggleCookieListSk');
+    if(cookieBtn){
+      if(total <= 100){
+        cookieBtn.style.display = 'none';
+      }else{
+        cookieBtn.style.display = '';
+        cookieBtn.textContent = showAllCookie[country]
+          ? 'Свернуть (100)'
+          : `Показать все (${total})`;
+      }
+    }
   });
 }
 
-function updateEmailToggleButtons(cfg){
-  ['cz','sk'].forEach(country=>{
-    const btn = document.getElementById(country === 'cz' ? 'toggleEmailListCz' : 'toggleEmailListSk');
-    if(!btn) return;
-    const list = cfg.emails?.[country] || [];
-    if(list.length <= 100){
-      btn.style.display = 'none';
-      return;
-    }
-    btn.style.display = '';
-    btn.textContent = showAllEmail[country]
-      ? 'Свернуть (100)'
-      : `Показать все (${list.length})`;
-  });
-}
-
-function updateCookieToggleButtons(cfg){
-  ['cz','sk'].forEach(country=>{
-    const btn = document.getElementById(country === 'cz' ? 'toggleCookieListCz' : 'toggleCookieListSk');
-    if(!btn) return;
-    const list = cfg.emails?.[country] || [];
-    if(list.length <= 100){
-      btn.style.display = 'none';
-      return;
-    }
-    btn.style.display = '';
-    btn.textContent = showAllCookie[country]
-      ? 'Свернуть (100)'
-      : `Показать все (${list.length})`;
+function __bindDefaultFolderButton(btn){
+  if(!btn || btn.__defaultFolderBound) return;
+  btn.__defaultFolderBound = true;
+  btn.addEventListener('click', (ev)=>{
+    ev.preventDefault();
+    alert('Браузер не позволяет программно задавать папку по умолчанию. Используйте обычный выбор файла.');
   });
 }
 
@@ -490,6 +500,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       refreshCookieProfiles();
     });
   }
+  document.querySelectorAll('[id^="setDefaultFolder"]').forEach(btn=>{
+    __bindDefaultFolderButton(btn);
+  });
 
   const modeCz = document.getElementById('czDomainMode');
   if(modeCz){
@@ -865,6 +878,7 @@ function load() {
     updatePreview('sk', cfg);
     updateDomainModeUi('cz');
     updateDomainModeUi('sk');
+    __updateEmailCountersUI(cfg);
 
     ['czFirst','czLast','czDomain1','czDomain2','czDomainMode','skFirst','skLast','skDomain1','skDomain2','skDomainMode'].forEach(id=>{
       const el = document.getElementById(id);
@@ -879,8 +893,6 @@ function load() {
         });
       };
     });
-    updateCounts(cfg);
-    updateEmailToggleButtons(cfg);
   });
 }
 
@@ -950,7 +962,6 @@ function renderTable(countryKey, cfg) {
 
     tdStatus.textContent = tr.className === 'active-row' ? 'Active' : (tr.className === 'black-row' ? 'Blacklist' : 'Queue');
   });
-  updateEmailToggleButtons(cfg);
 }
 
 // --- Код для вкладки "Фразы" ---
@@ -1172,6 +1183,7 @@ async function refreshCookieProfiles() {
   normalizeCookieProfilesLocal(cfg);
   cfg.cookieProfiles.cz = cfg.cookieProfiles.cz || [];
   cfg.cookieProfiles.sk = cfg.cookieProfiles.sk || [];
+  __updateEmailCountersUI(cfg);
   document.getElementById('cookie_cz_active_count').value = (cfg.cookieProfilesActiveCount && cfg.cookieProfilesActiveCount.cz) || 4;
   document.getElementById('cookie_sk_active_count').value = (cfg.cookieProfilesActiveCount && cfg.cookieProfilesActiveCount.sk) || 4;
   // Toggle switch
@@ -1350,8 +1362,6 @@ tbody.querySelectorAll('.cp-clear').forEach(btn=>{
 
   fillTable('cz');
   fillTable('sk');
-  updateCounts(cfg);
-  updateCookieToggleButtons(cfg);
 
   // Validation controls
   ['cz','sk'].forEach(cc=>{
@@ -1411,8 +1421,10 @@ tbody.querySelectorAll('.cp-clear').forEach(btn=>{
                          '<input type="file" class="bulk-input" accept=".txt,.json" multiple data-country="'+cc+'" style="display:none;">';
       table.parentElement.insertBefore(holder, table);
       const bulkBtn = holder.querySelector('.bulk-import');
+      const defaultBtn = holder.querySelector('.bulk-default-folder');
       const bulkInp = holder.querySelector('.bulk-input');
       bulkBtn.addEventListener('click',()=> bulkInp.click());
+      __bindDefaultFolderButton(defaultBtn);
       bulkInp.addEventListener('change', async (ev)=>{
         const files = Array.from(ev.target.files||[]);
         if (!files.length) return;
