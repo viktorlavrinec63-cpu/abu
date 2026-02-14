@@ -114,10 +114,19 @@
             </div>
           </div>
 
-          <div class="eb-row eb-domain">
+          <div class="eb-row eb-mode">
+            <label>Режим доменов</label>
+            <select id="czDomainMode">
+              <option value="1">1 вариант</option>
+              <option value="2">2 варианта</option>
+            </select>
+          </div>
+
+          <div class="eb-row eb-domain" data-country="cz" data-variant="1">
+            <span class="eb-variant">Вариант 1</span>
             <span class="eb-at">@</span>
 
-            <div class="subpicker" id="czSubPicker" data-country="cz">
+            <div class="subpicker" id="czSubdomains1" data-country="cz" data-variant="1">
               <button type="button" class="subpicker__btn">Поддомены ▾</button>
               <div class="subpicker__menu hidden">
                 <input type="text" class="subpicker__search" placeholder="Поиск...">
@@ -131,21 +140,44 @@
             </div>
 
             <span class="eb-dot">.</span>
-            <input id="czDomain" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
+            <input id="czDomain1" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
+          </div>
+
+          <div class="eb-row eb-domain" data-country="cz" data-variant="2">
+            <span class="eb-variant">Вариант 2</span>
+            <span class="eb-at">@</span>
+
+            <div class="subpicker" id="czSubdomains2" data-country="cz" data-variant="2">
+              <button type="button" class="subpicker__btn">Поддомены ▾</button>
+              <div class="subpicker__menu hidden">
+                <input type="text" class="subpicker__search" placeholder="Поиск...">
+                <div class="subpicker__actions">
+                  <button type="button" class="subpicker__all">Все</button>
+                  <button type="button" class="subpicker__none">Очистить</button>
+                </div>
+                <div class="subpicker__list"></div>
+              </div>
+              <div class="subpicker__summary"></div>
+            </div>
+
+            <span class="eb-dot">.</span>
+            <input id="czDomain2" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
           </div>
 
           <div class="eb-row eb-actions">
-            <button id="saveCz">⚡ Генерировать 100</button>
+            <button id="saveCz">⚡ Генерировать 300</button>
             <button id="switchCz">🔄 Сменить alias</button>
           </div>
 
           <div id="czPreview" class="eb-preview"></div>
+          <div id="emailCountCz" class="eb-preview" style="margin-top:4px;"></div>
         </div>
 
         <table id="tableCZ" class="alias-table" style="margin-top:10px;">
           <thead><tr><th>#</th><th>Alias</th><th>Статус</th><th>Действия</th></tr></thead>
           <tbody></tbody>
         </table>
+        <button id="toggleEmailListCz" class="btn-small" style="margin-top:6px; display:none;"></button>
       </div>
 
       <!-- SK -->
@@ -164,10 +196,19 @@
             </div>
           </div>
 
-          <div class="eb-row eb-domain">
+          <div class="eb-row eb-mode">
+            <label>Режим доменов</label>
+            <select id="skDomainMode">
+              <option value="1">1 вариант</option>
+              <option value="2">2 варианта</option>
+            </select>
+          </div>
+
+          <div class="eb-row eb-domain" data-country="sk" data-variant="1">
+            <span class="eb-variant">Вариант 1</span>
             <span class="eb-at">@</span>
 
-            <div class="subpicker" id="skSubPicker" data-country="sk">
+            <div class="subpicker" id="skSubdomains1" data-country="sk" data-variant="1">
               <button type="button" class="subpicker__btn">Поддомены ▾</button>
               <div class="subpicker__menu hidden">
                 <input type="text" class="subpicker__search" placeholder="Поиск...">
@@ -181,21 +222,44 @@
             </div>
 
             <span class="eb-dot">.</span>
-            <input id="skDomain" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
+            <input id="skDomain1" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
+          </div>
+
+          <div class="eb-row eb-domain" data-country="sk" data-variant="2">
+            <span class="eb-variant">Вариант 2</span>
+            <span class="eb-at">@</span>
+
+            <div class="subpicker" id="skSubdomains2" data-country="sk" data-variant="2">
+              <button type="button" class="subpicker__btn">Поддомены ▾</button>
+              <div class="subpicker__menu hidden">
+                <input type="text" class="subpicker__search" placeholder="Поиск...">
+                <div class="subpicker__actions">
+                  <button type="button" class="subpicker__all">Все</button>
+                  <button type="button" class="subpicker__none">Очистить</button>
+                </div>
+                <div class="subpicker__list"></div>
+              </div>
+              <div class="subpicker__summary"></div>
+            </div>
+
+            <span class="eb-dot">.</span>
+            <input id="skDomain2" class="eb-domain-input" placeholder="mydomain.com" autocomplete="off">
           </div>
 
           <div class="eb-row eb-actions">
-            <button id="saveSk">⚡ Генерировать 100</button>
+            <button id="saveSk">⚡ Генерировать 300</button>
             <button id="switchSk">🔄 Сменить alias</button>
           </div>
 
           <div id="skPreview" class="eb-preview"></div>
+          <div id="emailCountSk" class="eb-preview" style="margin-top:4px;"></div>
         </div>
 
         <table id="tableSK" class="alias-table" style="margin-top:10px;">
           <thead><tr><th>#</th><th>Alias</th><th>Статус</th><th>Действия</th></tr></thead>
           <tbody></tbody>
         </table>
+        <button id="toggleEmailListSk" class="btn-small" style="margin-top:6px; display:none;"></button>
       </div>
     </div>
   </section>
@@ -327,7 +391,7 @@
     <br>
     <div style="display:flex; gap:16px;">
       <div style="flex:1;">
-        <h3>Чехия (CZ)</h3>
+        <h3>Чехия (CZ) <span id="cookieCountCz" style="font-weight:400; font-size:12px; color:#555;"></span></h3>
     <table id="cookieTableCZ" class="alias-table" style="margin-top:10px;">
       <thead>
         <tr>
@@ -342,9 +406,10 @@
       </thead>
       <tbody></tbody>
     </table>
+    <button id="toggleCookieListCz" class="btn-small" style="margin-top:6px; display:none;"></button>
       </div>
       <div style="flex:1;">
-        <h3>Словакия (SK)</h3>
+        <h3>Словакия (SK) <span id="cookieCountSk" style="font-weight:400; font-size:12px; color:#555;"></span></h3>
     <table id="cookieTableSK" class="alias-table" style="margin-top:10px;">
       <thead>
         <tr>
@@ -359,6 +424,7 @@
       </thead>
       <tbody></tbody>
     </table>
+    <button id="toggleCookieListSk" class="btn-small" style="margin-top:6px; display:none;"></button>
       </div>
     </div>
     <div style="margin-top:10px; font-size:12px; color:#666;">

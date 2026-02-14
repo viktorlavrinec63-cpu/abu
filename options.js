@@ -46,7 +46,10 @@ const EMAIL_SUBDOMAINS = [
   "zoznam","azet","pobox"
 ];
 
-const EMAIL_GENERATE_COUNT = 100;
+const EMAIL_GENERATE_COUNT = 300;
+
+const showAllEmail = { cz: false, sk: false };
+const showAllCookie = { cz: false, sk: false };
 
 function ensureBuilderCfg(cfg){
   cfg = cfg || {};
@@ -57,13 +60,41 @@ function ensureBuilderCfg(cfg){
   cfg.lastApplied = cfg.lastApplied || {cz:'', sk:''};
   cfg.cookieRotationIdx = cfg.cookieRotationIdx || {cz:0, sk:0};
 
-  cfg.emailBuilder = cfg.emailBuilder || { cz:{first:"", last:"", domain:""}, sk:{first:"", last:"", domain:""} };
-  cfg.emailBuilder.cz = cfg.emailBuilder.cz || {first:"", last:"", domain:""};
-  cfg.emailBuilder.sk = cfg.emailBuilder.sk || {first:"", last:"", domain:""};
+  const defaultBuilder = {
+    first: "",
+    last: "",
+    domainMode: 1,
+    domain1: "",
+    subdomains1: EMAIL_SUBDOMAINS.slice(),
+    domain2: "",
+    subdomains2: EMAIL_SUBDOMAINS.slice()
+  };
+
+  cfg.emailBuilder = cfg.emailBuilder || { cz: {}, sk: {} };
+  cfg.emailBuilder.cz = Object.assign({}, defaultBuilder, cfg.emailBuilder.cz || {});
+  cfg.emailBuilder.sk = Object.assign({}, defaultBuilder, cfg.emailBuilder.sk || {});
 
   cfg.emailSubSel = cfg.emailSubSel || { cz: EMAIL_SUBDOMAINS.slice(), sk: EMAIL_SUBDOMAINS.slice() };
   if(!Array.isArray(cfg.emailSubSel.cz) || !cfg.emailSubSel.cz.length) cfg.emailSubSel.cz = EMAIL_SUBDOMAINS.slice();
   if(!Array.isArray(cfg.emailSubSel.sk) || !cfg.emailSubSel.sk.length) cfg.emailSubSel.sk = EMAIL_SUBDOMAINS.slice();
+
+  ['cz','sk'].forEach(country=>{
+    const builder = cfg.emailBuilder[country];
+    if(builder.domain && !builder.domain1){
+      builder.domain1 = builder.domain;
+    }
+    if((!Array.isArray(builder.subdomains1) || !builder.subdomains1.length) &&
+       cfg.emailSubSel && Array.isArray(cfg.emailSubSel[country]) && cfg.emailSubSel[country].length){
+      builder.subdomains1 = cfg.emailSubSel[country].slice();
+    }
+    if(!Array.isArray(builder.subdomains1) || !builder.subdomains1.length){
+      builder.subdomains1 = EMAIL_SUBDOMAINS.slice();
+    }
+    if(!Array.isArray(builder.subdomains2) || !builder.subdomains2.length){
+      builder.subdomains2 = EMAIL_SUBDOMAINS.slice();
+    }
+    builder.domainMode = builder.domainMode === 2 ? 2 : 1;
+  });
   return cfg;
 }
 
@@ -178,32 +209,43 @@ function buildLocalWithYear(baseLocal){
  * - дубликаты e-mail (полный адрес) исключаются через Set
  * - суффиксы 01/02/03 НЕ используются
  */
-function generateEmails(country, cfg, first, last, domain, count){
+function generateEmails(country, cfg, builder, count){
   cfg = ensureBuilderCfg(cfg || {});
 
-  const subs = (cfg.emailSubSel && cfg.emailSubSel[country]) ? cfg.emailSubSel[country].slice() : [];
-  if(!subs.length) return [];
-
-  const localsBase = buildLocals(first, last);
+  const localsBase = buildLocals(builder.first, builder.last);
   if(!localsBase.length) return [];
 
-  const dom = normalizeDomain(domain);
-  if(!dom || !dom.includes(".")) return [];
+  const dom1 = normalizeDomain(builder.domain1);
+  const dom2 = normalizeDomain(builder.domain2);
+  const subs1 = Array.isArray(builder.subdomains1) ? builder.subdomains1.slice() : [];
+  const subs2 = Array.isArray(builder.subdomains2) ? builder.subdomains2.slice() : [];
+  const mode = builder.domainMode === 2 ? 2 : 1;
+
+  if(!dom1 || !dom1.includes(".") || !subs1.length) return [];
+  if(mode === 2 && (!dom2 || !dom2.includes(".") || !subs2.length)) return [];
 
   const target = count || EMAIL_GENERATE_COUNT;
   const emails = [];
   const usedEmails = new Set();
 
   let i = 0;
-  const maxIterations = target * 200; // большой запас, чтобы набить 100 уникальных
+  let v1Count = 0;
+  let v2Count = 0;
+  const maxIterations = target * 400; // большой запас, чтобы набить 300 уникальных
+
   while(emails.length < target && i < maxIterations){
     const baseLocal = localsBase[i % localsBase.length];
     const local = buildLocalWithYear(baseLocal);
-    const sub = subs[emails.length % subs.length]; // round-robin по поддоменам
+    const useVariant = mode === 2 ? (emails.length % 2 === 0 ? 1 : 2) : 1;
+    const sub = useVariant === 1
+      ? subs1[v1Count % subs1.length]
+      : subs2[v2Count % subs2.length];
+    const dom = useVariant === 1 ? dom1 : dom2;
     const email = `${local}@${sub}.${dom}`.toLowerCase();
     if(!usedEmails.has(email)){
       usedEmails.add(email);
       emails.push(email);
+      if(useVariant === 1) v1Count++; else v2Count++;
     }
     i++;
   }
@@ -213,12 +255,12 @@ function generateEmails(country, cfg, first, last, domain, count){
 /**
  * Для превью — 10 штук.
  */
-function generate10Emails(country, cfg, first, last, domain){
-  return generateEmails(country, cfg, first, last, domain, 10);
+function generate10Emails(country, cfg, builder){
+  return generateEmails(country, cfg, builder, 10);
 }
 
-function renderSubPicker(country, cfg){
-  const root = document.getElementById(country + "SubPicker");
+function renderSubPicker(country, variant, cfg){
+  const root = document.getElementById(country + "Subdomains" + variant);
   if(!root) return;
 
   cfg = ensureBuilderCfg(cfg || {});
@@ -232,11 +274,13 @@ function renderSubPicker(country, cfg){
   const summary = root.querySelector(".subpicker__summary");
 
   const all = EMAIL_SUBDOMAINS.slice();
-  const selected = new Set((cfg.emailSubSel[country] || []).slice());
+  const builder = cfg.emailBuilder[country] || {};
+  const key = variant === 2 ? 'subdomains2' : 'subdomains1';
+  const selected = new Set((builder[key] || []).slice());
 
   function updateSummary(){
     const arr = Array.from(selected);
-    cfg.emailSubSel[country] = arr;
+    cfg.emailBuilder[country][key] = arr;
     const head = arr.slice(0,3).join(", ");
     summary.textContent = arr.length
       ? `Выбрано: ${arr.length}${head ? " ("+head+(arr.length>3?", …":"")+")" : ""}`
@@ -255,7 +299,7 @@ function renderSubPicker(country, cfg){
       cb.checked = selected.has(name);
       cb.onchange = () => {
         if(cb.checked) selected.add(name); else selected.delete(name);
-        cfg.emailSubSel[country] = Array.from(selected);
+        cfg.emailBuilder[country][key] = Array.from(selected);
         chrome.storage.local.set({cfg}, ()=>{
           updateSummary();
           updatePreview(country, cfg);
@@ -286,7 +330,7 @@ function renderSubPicker(country, cfg){
     allBtn.onclick = (ev)=>{
       ev.preventDefault();
       all.forEach(x=>selected.add(x));
-      cfg.emailSubSel[country] = Array.from(selected);
+      cfg.emailBuilder[country][key] = Array.from(selected);
       chrome.storage.local.set({cfg}, ()=>{
         draw(search.value);
         updateSummary();
@@ -298,7 +342,7 @@ function renderSubPicker(country, cfg){
     noneBtn.onclick = (ev)=>{
       ev.preventDefault();
       selected.clear();
-      cfg.emailSubSel[country] = [];
+      cfg.emailBuilder[country][key] = [];
       chrome.storage.local.set({cfg}, ()=>{
         draw(search.value);
         updateSummary();
@@ -317,12 +361,87 @@ function updatePreview(country, cfg){
   if(!prev) return;
   const firstEl = document.getElementById(country + "First");
   const lastEl  = document.getElementById(country + "Last");
-  const domEl   = document.getElementById(country + "Domain");
+  const dom1El  = document.getElementById(country + "Domain1");
+  const dom2El  = document.getElementById(country + "Domain2");
+  const modeEl  = document.getElementById(country + "DomainMode");
   const first = firstEl ? firstEl.value : "";
   const last  = lastEl ? lastEl.value : "";
-  const dom   = domEl ? domEl.value : "";
-  const list = generate10Emails(country, cfg, first, last, dom);
+  const dom1  = dom1El ? dom1El.value : "";
+  const dom2  = dom2El ? dom2El.value : "";
+  const mode  = modeEl && Number(modeEl.value) === 2 ? 2 : 1;
+  const builder = {
+    first,
+    last,
+    domainMode: mode,
+    domain1: dom1,
+    domain2: dom2,
+    subdomains1: cfg.emailBuilder?.[country]?.subdomains1 || [],
+    subdomains2: cfg.emailBuilder?.[country]?.subdomains2 || []
+  };
+  const list = generate10Emails(country, cfg, builder);
   prev.textContent = list.length ? `Пример: ${list[0]}` : "";
+}
+
+function updateDomainModeUi(country){
+  const modeEl = document.getElementById(country + 'DomainMode');
+  const mode = modeEl && Number(modeEl.value) === 2 ? 2 : 1;
+  document.querySelectorAll(`.eb-domain[data-country="${country}"][data-variant="2"]`).forEach(row=>{
+    row.style.display = mode === 2 ? '' : 'none';
+  });
+}
+
+function __computeEmailCounts(cfg, country){
+  cfg = ensureBuilderCfg(cfg || {});
+  const list = cfg.emails?.[country] || [];
+  const total = list.length;
+  const listSet = new Set(list);
+  const blacklist = cfg.blacklist?.[country] || [];
+  const blocked = blacklist.filter(email => listSet.has(email)).length;
+  const remaining = total - blocked;
+  return { total, remaining };
+}
+
+function __updateEmailCountersUI(cfg){
+  ['cz','sk'].forEach(country=>{
+    const { total, remaining } = __computeEmailCounts(cfg, country);
+    const emailCount = document.getElementById(country === 'cz' ? 'emailCountCz' : 'emailCountSk');
+    if(emailCount) emailCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
+    const cookieCount = document.getElementById(country === 'cz' ? 'cookieCountCz' : 'cookieCountSk');
+    if(cookieCount) cookieCount.textContent = `Всего: ${total} | Осталось: ${remaining}`;
+
+    const emailBtn = document.getElementById(country === 'cz' ? 'toggleEmailListCz' : 'toggleEmailListSk');
+    if(emailBtn){
+      if(total <= 100){
+        emailBtn.style.display = 'none';
+      }else{
+        emailBtn.style.display = '';
+        emailBtn.textContent = showAllEmail[country]
+          ? 'Свернуть (100)'
+          : `Показать все (${total})`;
+      }
+    }
+
+    const cookieBtn = document.getElementById(country === 'cz' ? 'toggleCookieListCz' : 'toggleCookieListSk');
+    if(cookieBtn){
+      if(total <= 100){
+        cookieBtn.style.display = 'none';
+      }else{
+        cookieBtn.style.display = '';
+        cookieBtn.textContent = showAllCookie[country]
+          ? 'Свернуть (100)'
+          : `Показать все (${total})`;
+      }
+    }
+  });
+}
+
+function __bindDefaultFolderButton(btn){
+  if(!btn || btn.__defaultFolderBound) return;
+  btn.__defaultFolderBound = true;
+  btn.addEventListener('click', (ev)=>{
+    ev.preventDefault();
+    alert('Браузер не позволяет программно задавать папку по умолчанию. Используйте обычный выбор файла.');
+  });
 }
 
 
@@ -352,6 +471,47 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('saveSk').onclick = ()=>save('sk');
   document.getElementById('switchCz').onclick = ()=>switchAlias('cz');
   document.getElementById('switchSk').onclick = ()=>switchAlias('sk');
+
+  const toggleEmailCz = document.getElementById('toggleEmailListCz');
+  if(toggleEmailCz){
+    toggleEmailCz.addEventListener('click', ()=>{
+      showAllEmail.cz = !showAllEmail.cz;
+      load();
+    });
+  }
+  const toggleEmailSk = document.getElementById('toggleEmailListSk');
+  if(toggleEmailSk){
+    toggleEmailSk.addEventListener('click', ()=>{
+      showAllEmail.sk = !showAllEmail.sk;
+      load();
+    });
+  }
+  const toggleCookieCz = document.getElementById('toggleCookieListCz');
+  if(toggleCookieCz){
+    toggleCookieCz.addEventListener('click', ()=>{
+      showAllCookie.cz = !showAllCookie.cz;
+      refreshCookieProfiles();
+    });
+  }
+  const toggleCookieSk = document.getElementById('toggleCookieListSk');
+  if(toggleCookieSk){
+    toggleCookieSk.addEventListener('click', ()=>{
+      showAllCookie.sk = !showAllCookie.sk;
+      refreshCookieProfiles();
+    });
+  }
+  document.querySelectorAll('[id^="setDefaultFolder"]').forEach(btn=>{
+    __bindDefaultFolderButton(btn);
+  });
+
+  const modeCz = document.getElementById('czDomainMode');
+  if(modeCz){
+    modeCz.addEventListener('change', ()=> updateDomainModeUi('cz'));
+  }
+  const modeSk = document.getElementById('skDomainMode');
+  if(modeSk){
+    modeSk.addEventListener('change', ()=> updateDomainModeUi('sk'));
+  }
   load();
 
   // АНТИСПАМ: загрузка при открытии страницы
@@ -509,35 +669,69 @@ function save(country){
 
     const firstEl = document.getElementById(country + "First");
     const lastEl  = document.getElementById(country + "Last");
-    const domEl   = document.getElementById(country + "Domain");
+    const dom1El  = document.getElementById(country + "Domain1");
+    const dom2El  = document.getElementById(country + "Domain2");
+    const modeEl  = document.getElementById(country + "DomainMode");
 
     const first = (firstEl && firstEl.value ? firstEl.value.trim() : "");
     const last  = (lastEl  && lastEl.value  ? lastEl.value.trim()  : "");
-    const domRaw = (domEl && domEl.value ? domEl.value.trim() : "");
-    const domNorm = normalizeDomain(domRaw);
+    const dom1Raw = (dom1El && dom1El.value ? dom1El.value.trim() : "");
+    const dom2Raw = (dom2El && dom2El.value ? dom2El.value.trim() : "");
+    const dom1Norm = normalizeDomain(dom1Raw);
+    const dom2Norm = normalizeDomain(dom2Raw);
+    const mode = modeEl && Number(modeEl.value) === 2 ? 2 : 1;
+    const builderCfg = cfg.emailBuilder[country] || {};
+    const subdomains1 = Array.isArray(builderCfg.subdomains1) ? builderCfg.subdomains1.slice() : [];
+    const subdomains2 = Array.isArray(builderCfg.subdomains2) ? builderCfg.subdomains2.slice() : [];
 
     if(!first || !last){
       alert("Введите Имя и Фамилию");
       return;
     }
-    if(!domNorm || !domNorm.includes(".")){
+    if(!dom1Norm || !dom1Norm.includes(".")){
       alert("Введите домен (пример: mydomain.com)");
       return;
     }
-    if(!cfg.emailSubSel[country] || !cfg.emailSubSel[country].length){
+    if(!subdomains1.length){
       alert("Выбери хотя бы 1 поддомен");
       return;
     }
+    if(mode === 2){
+      if(!dom2Norm || !dom2Norm.includes(".")){
+        alert("Введите домен (пример: mydomain.com)");
+        return;
+      }
+      if(!subdomains2.length){
+        alert("Выбери хотя бы 1 поддомен");
+        return;
+      }
+    }
 
-    // Генерация 100 уникальных e-mail с датой/годом
-    const aliases = generateEmails(country, cfg, first, last, domNorm, 100);
+    // Генерация 300 уникальных e-mail с датой/годом
+    const aliases = generateEmails(country, cfg, {
+      first,
+      last,
+      domainMode: mode,
+      domain1: dom1Norm,
+      domain2: dom2Norm,
+      subdomains1,
+      subdomains2
+    }, EMAIL_GENERATE_COUNT);
     if(!aliases.length){
-      alert("Не удалось сгенерировать 100 email (проверь поля)");
+      alert("Не удалось сгенерировать 300 email (проверь поля)");
       return;
     }
 
     // сохраняем введённые значения конструктора
-    cfg.emailBuilder[country] = { first, last, domain: domNorm };
+    cfg.emailBuilder[country] = {
+      first,
+      last,
+      domainMode: mode,
+      domain1: dom1Norm,
+      subdomains1,
+      domain2: dom2Norm,
+      subdomains2
+    };
 
     // предыдущие алиасы / профили
     const oldAliases = Array.isArray(cfg.emails[country]) ? cfg.emails[country].slice() : [];
@@ -665,19 +859,28 @@ function load() {
 
     const czFirst = document.getElementById('czFirst'); if(czFirst) czFirst.value = cz.first || '';
     const czLast  = document.getElementById('czLast');  if(czLast)  czLast.value  = cz.last  || '';
-    const czDom   = document.getElementById('czDomain');if(czDom)   czDom.value   = cz.domain|| '';
+    const czDom1  = document.getElementById('czDomain1');if(czDom1)  czDom1.value  = cz.domain1 || '';
+    const czDom2  = document.getElementById('czDomain2');if(czDom2)  czDom2.value  = cz.domain2 || '';
+    const czMode  = document.getElementById('czDomainMode');if(czMode) czMode.value = String(cz.domainMode || 1);
 
     const skFirst = document.getElementById('skFirst'); if(skFirst) skFirst.value = sk.first || '';
     const skLast  = document.getElementById('skLast');  if(skLast)  skLast.value  = sk.last  || '';
-    const skDom   = document.getElementById('skDomain');if(skDom)   skDom.value   = sk.domain|| '';
+    const skDom1  = document.getElementById('skDomain1');if(skDom1)  skDom1.value  = sk.domain1 || '';
+    const skDom2  = document.getElementById('skDomain2');if(skDom2)  skDom2.value  = sk.domain2 || '';
+    const skMode  = document.getElementById('skDomainMode');if(skMode) skMode.value = String(sk.domainMode || 1);
 
-    renderSubPicker('cz', cfg);
-    renderSubPicker('sk', cfg);
+    renderSubPicker('cz', 1, cfg);
+    renderSubPicker('cz', 2, cfg);
+    renderSubPicker('sk', 1, cfg);
+    renderSubPicker('sk', 2, cfg);
 
     updatePreview('cz', cfg);
     updatePreview('sk', cfg);
+    updateDomainModeUi('cz');
+    updateDomainModeUi('sk');
+    __updateEmailCountersUI(cfg);
 
-    ['czFirst','czLast','czDomain','skFirst','skLast','skDomain'].forEach(id=>{
+    ['czFirst','czLast','czDomain1','czDomain2','czDomainMode','skFirst','skLast','skDomain1','skDomain2','skDomainMode'].forEach(id=>{
       const el = document.getElementById(id);
       if(!el) return;
       el.oninput = ()=>{
@@ -685,11 +888,16 @@ function load() {
           const cfg2 = r && r.cfg ? r.cfg : {};
           ensureBuilderCfg(cfg2);
           const country = id.startsWith('cz') ? 'cz' : 'sk';
+          if(id.endsWith('DomainMode')) updateDomainModeUi(country);
           updatePreview(country, cfg2);
         });
       };
     });
   });
+}
+
+function refreshEmailTab(){
+  load();
 }
 
 function renderTable(countryKey, cfg) {
@@ -699,7 +907,9 @@ function renderTable(countryKey, cfg) {
   let tbody = tbl.querySelector('tbody');
   if (!tbody) { tbody = document.createElement('tbody'); tbl.appendChild(tbody); }
   tbody.innerHTML = '';
-  cfg.emails[country].forEach((em,i) => {
+  const list = cfg.emails[country] || [];
+  const listToRender = showAllEmail[country] ? list : list.slice(0, 100);
+  listToRender.forEach((em,i) => {
     const tr = tbody.insertRow();
     tr.className = i===cfg.currentIdx[country] ? 'active-row' : cfg.blacklist[country].includes(em) ? 'black-row':'';
     tr.insertCell().textContent = i+1;
@@ -973,6 +1183,7 @@ async function refreshCookieProfiles() {
   normalizeCookieProfilesLocal(cfg);
   cfg.cookieProfiles.cz = cfg.cookieProfiles.cz || [];
   cfg.cookieProfiles.sk = cfg.cookieProfiles.sk || [];
+  __updateEmailCountersUI(cfg);
   document.getElementById('cookie_cz_active_count').value = (cfg.cookieProfilesActiveCount && cfg.cookieProfilesActiveCount.cz) || 4;
   document.getElementById('cookie_sk_active_count').value = (cfg.cookieProfilesActiveCount && cfg.cookieProfilesActiveCount.sk) || 4;
   // Toggle switch
@@ -1034,7 +1245,8 @@ async function refreshCookieProfiles() {
     if (!tbody) return;
     tbody.innerHTML = '';
     const list = (cfg.emails?.[country] || []).slice();
-    list.forEach((em, idx)=>{
+    const listToRender = showAllCookie[country] ? list : list.slice(0, 100);
+    listToRender.forEach((em, idx)=>{
       const tr = document.createElement('tr');
       tr.className = (cfg.blacklist?.[country]||[]).includes(em) ? 'black-row':'';
 
@@ -1161,7 +1373,7 @@ tbody.querySelectorAll('.cp-clear').forEach(btn=>{
       holder.style.margin = '8px 6px';
       holder.innerHTML = '<input class="validate-url" placeholder="URL для проверки (по умолчанию deti.bazos)" style="width:60%;"> ' +
                          '<button class="btn-small start-validate" data-country="'+cc+'">✅ Проверить токены</button>';
-      table.parentElement.appendChild(holder);
+      table.parentElement.insertBefore(holder, table);
       const input = holder.querySelector('.validate-url');
       const btn = holder.querySelector('.start-validate');
       chrome.storage.local.get('cfg', ({cfg})=>{
@@ -1205,11 +1417,14 @@ tbody.querySelectorAll('.cp-clear').forEach(btn=>{
       holder.className = 'bulk-holder-'+cc;
       holder.style.margin = '8px 0';
       holder.innerHTML = '<button class="btn-small bulk-import" data-country="'+cc+'">Массовый импорт (*.txt/*.json)</button>' +
+                         '<button class="btn-small bulk-default-folder" type="button" style="margin-left:6px;">Выбрать папку по умолчанию</button>' +
                          '<input type="file" class="bulk-input" accept=".txt,.json" multiple data-country="'+cc+'" style="display:none;">';
-      table.parentElement.appendChild(holder);
+      table.parentElement.insertBefore(holder, table);
       const bulkBtn = holder.querySelector('.bulk-import');
+      const defaultBtn = holder.querySelector('.bulk-default-folder');
       const bulkInp = holder.querySelector('.bulk-input');
       bulkBtn.addEventListener('click',()=> bulkInp.click());
+      __bindDefaultFolderButton(defaultBtn);
       bulkInp.addEventListener('change', async (ev)=>{
         const files = Array.from(ev.target.files||[]);
         if (!files.length) return;
